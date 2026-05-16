@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaSync — IoT Water Monitoring System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #05090f;
+    --bg2: #080e1a;
+    --bg3: #0b1422;
+    --cyan: #00d4ff;
+    --cyan2: #00a8cc;
+    --teal: #0a7c8c;
+    --amber: #ff8c42;
+    --red: #ff3f5b;
+    --green: #00e676;
+    --text: #cde8f5;
+    --muted: #4a6d82;
+    --border: rgba(0,212,255,0.15);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* CUSTOM CURSOR */
+  .cursor {
+    width: 12px; height: 12px;
+    border: 1.5px solid var(--cyan);
+    border-radius: 50%;
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 9999;
+    transition: transform 0.1s ease, border-color 0.2s;
+    transform: translate(-50%,-50%);
+  }
+  .cursor-ring {
+    width: 36px; height: 36px;
+    border: 1px solid rgba(0,212,255,0.35);
+    border-radius: 50%;
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%,-50%);
+    transition: all 0.12s ease;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 9990;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 20px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(12px);
+    background: rgba(5,9,15,0.7);
+    border-bottom: 0.5px solid var(--border);
+  }
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+  }
+  .nav-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .nav-links { display: flex; gap: 32px; }
+  .nav-links a {
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: color 0.2s;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .nav-links a:hover { color: var(--cyan); }
+
+  /* SECTIONS */
+  section { position: relative; }
+
+  /* ===== HERO ===== */
+  #hero {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #hero-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+  }
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 900px;
+    padding: 0 24px;
+  }
+  .hero-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.3s forwards;
+  }
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(72px, 12vw, 148px);
+    line-height: 0.9;
+    letter-spacing: 2px;
+    color: #fff;
+    text-shadow: 0 0 80px rgba(0,212,255,0.3);
+    opacity: 0;
+    animation: fadeUp 0.8s 0.5s forwards;
+  }
+  .hero-title span { color: var(--cyan); }
+  .hero-sub {
+    margin-top: 24px;
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.7s forwards;
+  }
+  .hero-cta {
+    margin-top: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 32px;
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    text-decoration: none;
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-family: 'IBM Plex Mono', monospace;
+    transition: all 0.3s;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.9s forwards;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-cta::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--cyan);
+    transform: translateX(-101%);
+    transition: transform 0.3s ease;
+    z-index: -1;
+  }
+  .hero-cta:hover { color: var(--bg); }
+  .hero-cta:hover::before { transform: translateX(0); }
+  .hero-scroll {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeUp 0.8s 1.2s forwards;
+  }
+  .scroll-line {
+    width: 1px;
+    height: 48px;
+    background: linear-gradient(to bottom, var(--cyan), transparent);
+    animation: scrollPulse 2s infinite;
+  }
+  .scroll-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  /* ===== SIMULATION ===== */
+  #simulation {
+    background: var(--bg2);
+    padding: 120px 48px;
+    border-top: 0.5px solid var(--border);
+  }
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(42px, 6vw, 72px);
+    line-height: 1;
+    color: #fff;
+    margin-bottom: 48px;
+  }
+  .sim-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px 1fr;
+    gap: 48px;
+    align-items: start;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* TANK */
+  .tank-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  .tank-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .tank-outer {
+    position: relative;
+    width: 160px;
+    height: 320px;
+    border: 2px solid rgba(0,212,255,0.4);
+    border-radius: 4px 4px 8px 8px;
+    overflow: hidden;
+    background: rgba(0,20,35,0.8);
+  }
+  .tank-water {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,168,204,0.9), rgba(0,212,255,0.4));
+    transition: height 0.8s cubic-bezier(0.25,0.46,0.45,0.94);
+    overflow: hidden;
+  }
+  .water-wave {
+    position: absolute;
+    top: -8px;
+    left: -50%;
+    width: 200%;
+    height: 20px;
+    background: rgba(0,212,255,0.5);
+    border-radius: 50%;
+    animation: wave 2s linear infinite;
+  }
+  .water-wave2 {
+    position: absolute;
+    top: -5px;
+    left: -60%;
+    width: 220%;
+    height: 16px;
+    background: rgba(0,212,255,0.3);
+    border-radius: 50%;
+    animation: wave 3s linear infinite reverse;
+  }
+  @keyframes wave {
+    from { transform: translateX(0); }
+    to { transform: translateX(50%); }
+  }
+  .bubble {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+    animation: bubbleUp 3s infinite;
+    bottom: 0;
+  }
+  @keyframes bubbleUp {
+    0% { transform: translateY(0) scale(1); opacity: 0.8; }
+    100% { transform: translateY(-300px) scale(0.3); opacity: 0; }
+  }
+  .tank-markers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .tank-marker {
+    position: absolute;
+    right: 0;
+    display: flex;
+    align-items: center;
+  }
+  .marker-line {
+    width: 12px;
+    height: 1px;
+    background: rgba(0,212,255,0.4);
+  }
+  .tank-pct-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    color: var(--cyan);
+    text-shadow: 0 0 30px rgba(0,212,255,0.5);
+  }
+  .tank-status-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 6px 16px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+  .badge-ok { background: rgba(0,230,118,0.1); border: 1px solid rgba(0,230,118,0.4); color: var(--green); }
+  .badge-low { background: rgba(255,63,91,0.1); border: 1px solid rgba(255,63,91,0.4); color: var(--red); }
+  .badge-high { background: rgba(255,140,66,0.1); border: 1px solid rgba(255,140,66,0.4); color: var(--amber); }
+
+  /* PUMP CONTROL PANEL */
+  .control-panel {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .control-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  }
+  .panel-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .control-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 0.5px solid rgba(0,212,255,0.08);
+  }
+  .control-row:last-of-type { border-bottom: none; }
+  .ctrl-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .ctrl-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: var(--cyan);
+    font-weight: 500;
+  }
+
+  /* PUMP TOGGLE */
+  .pump-btn {
+    width: 100%;
+    margin-top: 28px;
+    padding: 16px;
+    border: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: none;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .pump-btn.pump-off {
+    background: rgba(255,140,66,0.1);
+    border: 1px solid rgba(255,140,66,0.5);
+    color: var(--amber);
+  }
+  .pump-btn.pump-on {
+    background: rgba(0,230,118,0.1);
+    border: 1px solid rgba(0,230,118,0.5);
+    color: var(--green);
+  }
+  .pump-btn:hover { filter: brightness(1.3); transform: scale(1.01); }
+
+  /* THRESHOLD SLIDERS */
+  .slider-group { margin-top: 24px; }
+  .slider-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .threshold-slider {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 3px;
+    border-radius: 2px;
+    outline: none;
+    margin-bottom: 20px;
+  }
+  .threshold-slider.low {
+    background: linear-gradient(to right, var(--red) 0%, var(--red) var(--val), rgba(255,255,255,0.1) var(--val));
+  }
+  .threshold-slider.high {
+    background: linear-gradient(to right, var(--amber) 0%, var(--amber) var(--val), rgba(255,255,255,0.1) var(--val));
+  }
+  .threshold-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: none;
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 8px rgba(0,212,255,0.4);
+  }
+
+  /* DATA STREAM PANEL */
+  .data-stream {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    padding: 24px;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .data-stream::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+  }
+  .stream-header {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stream-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: blink 1.2s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+  .log-entries { display: flex; flex-direction: column; gap: 6px; }
+  .log-entry {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    animation: logFade 0.4s ease;
+  }
+  @keyframes logFade {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .log-ts { color: rgba(0,212,255,0.4); margin-right: 8px; }
+  .log-ok { color: var(--green); }
+  .log-warn { color: var(--amber); }
+  .log-alert { color: var(--red); }
+
+  /* MINI CHART */
+  .mini-chart { margin-top: 24px; position: relative; height: 80px; }
+  #chartCanvas { width: 100%; height: 100%; }
+
+  /* ===== COMPONENTS ===== */
+  #components {
+    padding: 120px 48px;
+    background: var(--bg);
+    border-top: 0.5px solid var(--border);
+  }
+  .components-header {
+    max-width: 1200px;
+    margin: 0 auto 64px;
+  }
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .comp-card {
+    background: var(--bg3);
+    padding: 40px 32px;
+    position: relative;
+    overflow: hidden;
+    cursor: none;
+    transition: all 0.4s cubic-bezier(0.25,0.46,0.45,0.94);
+    border: 0.5px solid transparent;
+  }
+  .comp-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,212,255,0.05) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .comp-card:hover { border-color: rgba(0,212,255,0.3); transform: translateY(-4px); }
+  .comp-card:hover::before { opacity: 1; }
+  .comp-icon {
+    width: 48px; height: 48px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .comp-num {
+    position: absolute;
+    top: 32px; right: 32px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 80px;
+    color: rgba(0,212,255,0.04);
+    line-height: 1;
+  }
+  .comp-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: #fff;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .comp-role {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .comp-desc {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .comp-spec {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .spec-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    border: 0.5px solid rgba(0,212,255,0.25);
+    color: rgba(0,212,255,0.7);
+    letter-spacing: 1px;
+  }
+
+  /* ===== ARCHITECTURE ===== */
+  #architecture {
+    padding: 120px 48px;
+    background: var(--bg2);
+    border-top: 0.5px solid var(--border);
+  }
+  .arch-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  .arch-layers { margin-top: 64px; position: relative; }
+  .arch-layer {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    padding: 28px 0;
+    position: relative;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.6s ease;
+  }
+  .arch-layer.visible { opacity: 1; transform: translateX(0); }
+  .layer-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    color: rgba(0,212,255,0.08);
+    min-width: 60px;
+    line-height: 1;
+  }
+  .layer-bar {
+    width: 4px;
+    height: 64px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .layer-info { flex: 1; }
+  .layer-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+  .layer-detail {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+  .layer-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .layer-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    letter-spacing: 1px;
+  }
+  .arch-connector {
+    width: 4px;
+    height: 32px;
+    margin-left: 92px;
+    position: relative;
+    overflow: hidden;
+  }
+  .arch-connector::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, var(--cyan), transparent);
+    animation: dataFlow 1.5s linear infinite;
+  }
+  @keyframes dataFlow {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(100%); }
+  }
+
+  /* ===== HOW IT WORKS ===== */
+  #how {
+    padding: 120px 48px;
+    background: var(--bg);
+    border-top: 0.5px solid var(--border);
+  }
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 40px;
+    max-width: 1200px;
+    margin: 64px auto 0;
+  }
+  .step-card {
+    position: relative;
+    padding-top: 16px;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: all 0.5s ease;
+  }
+  .step-card.visible { opacity: 1; transform: translateY(0); }
+  .step-line {
+    position: absolute;
+    top: 28px; left: 48px;
+    right: 0;
+    height: 1px;
+    background: rgba(0,212,255,0.15);
+  }
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 56px;
+    color: var(--cyan);
+    line-height: 1;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 0 40px rgba(0,212,255,0.4);
+  }
+  .step-icon {
+    width: 40px; height: 40px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    font-size: 18px;
+  }
+  .step-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .step-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ===== STATS ===== */
+  #stats {
+    padding: 80px 48px;
+    background: var(--bg3);
+    border-top: 0.5px solid var(--border);
+  }
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 80px;
+    max-width: 900px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+  }
+  .stat-item { text-align: center; }
+  .stat-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    color: var(--cyan);
+    line-height: 1;
+    text-shadow: 0 0 40px rgba(0,212,255,0.3);
+  }
+  .stat-unit {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: rgba(0,212,255,0.5);
+  }
+  .stat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  /* ===== FOOTER ===== */
+  footer {
+    padding: 60px 48px;
+    border-top: 0.5px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg2);
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .footer-left { }
+  .footer-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--cyan);
+    letter-spacing: 3px;
+  }
+  .footer-info {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.8;
+  }
+  .footer-tech {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 2;
+  }
+  .footer-tech span { color: var(--cyan); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--teal); border-radius: 2px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .sim-grid { grid-template-columns: 1fr; }
+    nav { padding: 16px 24px; }
+    .nav-links { display: none; }
+    #simulation, #components, #architecture, #how, #stats { padding: 80px 24px; }
+    footer { padding: 40px 24px; flex-direction: column; }
+    .footer-tech { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- NAV -->
+<nav>
+  <div>
+    <div class="nav-logo">AQUASYNC</div>
+    <div class="nav-tag">IoT · VIT Vellore · 2025</div>
+  </div>
+  <div class="nav-links">
+    <a href="#simulation">Simulate</a>
+    <a href="#components">Hardware</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#how">Process</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-content">
+    <div class="hero-eyebrow">IoT Based Water Level Monitoring &amp; Control</div>
+    <div class="hero-title">AQUA<span>SYNC</span></div>
+    <p class="hero-sub">A working prototype that keeps tabs on your water tank so you don't have to — automated pump control, live alerts, and a real dashboard, all running over Wi-Fi.</p>
+    <a href="#simulation" class="hero-cta">View Live Simulation ↓</a>
+  </div>
+  <div class="hero-scroll">
+    <span class="scroll-text">Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- SIMULATION -->
+<section id="simulation">
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="section-label">Live Interactive Demo</div>
+    <div class="section-title">TANK SIMULATION</div>
+    <div class="sim-grid">
+
+      <!-- LEFT: DATA STREAM -->
+      <div class="data-stream">
+        <div class="stream-header">
+          <div class="stream-dot"></div>
+          Live Data Stream
+        </div>
+        <div class="log-entries" id="logEntries"></div>
+        <div class="mini-chart">
+          <canvas id="chartCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- CENTER: TANK -->
+      <div class="tank-wrap">
+        <div class="tank-label">Water Tank</div>
+        <div class="tank-outer">
+          <div class="tank-water" id="tankWater">
+            <div class="water-wave"></div>
+            <div class="water-wave2"></div>
+            <div class="bubble" style="left:20%;animation-delay:0s;animation-duration:3.5s"></div>
+            <div class="bubble" style="left:50%;animation-delay:1.2s;animation-duration:4s"></div>
+            <div class="bubble" style="left:75%;animation-delay:0.6s;animation-duration:2.8s"></div>
+          </div>
+          <div class="tank-markers">
+            <div class="tank-marker" style="bottom:80%;"><div class="marker-line"></div></div>
+            <div class="tank-marker" style="bottom:20%;"><div class="marker-line"></div></div>
+          </div>
+          <!-- HIGH threshold line -->
+          <div id="highLine" style="position:absolute;left:0;right:0;height:1px;background:rgba(255,140,66,0.6);transition:bottom 0.3s;"></div>
+          <!-- LOW threshold line -->
+          <div id="lowLine" style="position:absolute;left:0;right:0;height:1px;background:rgba(255,63,91,0.6);transition:bottom 0.3s;"></div>
+        </div>
+        <div class="tank-pct-display" id="pctDisplay">60%</div>
+        <div class="tank-status-badge badge-ok" id="statusBadge">NORMAL</div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <button onclick="sim.addWater()" style="padding:8px 16px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.3);color:var(--cyan);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;cursor:none;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,212,255,0.18)'" onmouseout="this.style.background='rgba(0,212,255,0.08)'">+ FILL</button>
+          <button onclick="sim.drainWater()" style="padding:8px 16px;background:rgba(255,63,91,0.08);border:1px solid rgba(255,63,91,0.3);color:var(--red);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;cursor:none;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,63,91,0.18)'" onmouseout="this.style.background='rgba(255,63,91,0.08)'">− DRAIN</button>
+        </div>
+      </div>
+
+      <!-- RIGHT: CONTROL PANEL -->
+      <div>
+        <div class="control-panel" style="margin-bottom:16px;">
+          <div class="panel-title">Pump Control Unit</div>
+          <div class="control-row">
+            <span class="ctrl-label">SENSOR</span>
+            <span class="ctrl-value">HC-SR04</span>
+          </div>
+          <div class="control-row">
+            <span class="ctrl-label">MCU</span>
+            <span class="ctrl-value">ESP8266</span>
+          </div>
+          <div class="control-row">
+            <span class="ctrl-label">DISTANCE</span>
+            <span class="ctrl-value" id="distVal">18.4 cm</span>
+          </div>
+          <div class="control-row">
+            <span class="ctrl-label">VOLTAGE</span>
+            <span class="ctrl-value" id="voltVal">1.86 V</span>
+          </div>
+          <div class="control-row">
+            <span class="ctrl-label">PUMP STATUS</span>
+            <span class="ctrl-value" id="pumpStatusText" style="color:var(--red);">OFF</span>
+          </div>
+          <button class="pump-btn pump-off" id="pumpBtn" onclick="sim.togglePump()">
+            ⬡ PUMP OFF — CLICK TO OVERRIDE
+          </button>
+          <div class="slider-group" style="margin-top:28px;">
+            <div class="slider-label">
+              <span>LOW THRESHOLD</span>
+              <span id="lowVal" style="color:var(--red);">20%</span>
+            </div>
+            <input type="range" class="threshold-slider low" min="5" max="45" value="20" id="lowSlider"
+              oninput="sim.setLow(this.value)" style="--val:30%">
+            <div class="slider-label">
+              <span>HIGH THRESHOLD</span>
+              <span id="highVal" style="color:var(--amber);">80%</span>
+            </div>
+            <input type="range" class="threshold-slider high" min="55" max="95" value="80" id="highSlider"
+              oninput="sim.setHigh(this.value)" style="--val:60%">
+          </div>
+        </div>
+        <div class="control-panel">
+          <div class="panel-title">Network Status</div>
+          <div class="control-row">
+            <span class="ctrl-label">SSID</span>
+            <span class="ctrl-value" style="font-size:12px;">VIT_WiFi_5G</span>
+          </div>
+          <div class="control-row">
+            <span class="ctrl-label">MQTT BROKER</span>
+            <span class="ctrl-value" style="color:var(--green);font-size:11px;">CONNECTED</span>
+          </div>
+          <div class="control-row">
+            <span class="ctrl-label">LATENCY</span>
+            <span class="ctrl-value" id="latVal">42 ms</span>
+          </div>
+          <div class="control-row">
+            <span class="ctrl-label">PACKETS SENT</span>
+            <span class="ctrl-value" id="pktVal">0</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- COMPONENTS -->
+<section id="components">
+  <div class="components-header">
+    <div class="section-label">Hardware Breakdown</div>
+    <div class="section-title">COMPONENTS<br>USED</div>
+  </div>
+  <div class="comp-grid">
+
+    <div class="comp-card">
+      <div class="comp-num">01</div>
+      <div class="comp-icon">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="14" width="32" height="20" rx="3" stroke="#00d4ff" stroke-width="1.5"/>
+          <circle cx="24" cy="24" r="5" stroke="#00d4ff" stroke-width="1.5"/>
+          <line x1="8" y1="18" x2="4" y2="18" stroke="#00d4ff" stroke-width="1.5"/>
+          <line x1="8" y1="24" x2="4" y2="24" stroke="#00d4ff" stroke-width="1.5"/>
+          <line x1="8" y1="30" x2="4" y2="30" stroke="#00d4ff" stroke-width="1.5"/>
+          <line x1="40" y1="18" x2="44" y2="18" stroke="#00d4ff" stroke-width="1.5"/>
+          <line x1="40" y1="24" x2="44" y2="24" stroke="#00d4ff" stroke-width="1.5"/>
+          <line x1="40" y1="30" x2="44" y2="30" stroke="#00d4ff" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="comp-name">NodeMCU</div>
+      <div class="comp-role">Microcontroller</div>
+      <p class="comp-desc">This little board does most of the heavy lifting. It reads the sensor, decides whether to kick the pump on or off, and ships data up to the cloud — all thanks to the built-in Wi-Fi that makes wiring so much simpler.</p>
+      <div class="comp-spec">
+        <span class="spec-pill">ESP8266</span>
+        <span class="spec-pill">80 MHz</span>
+        <span class="spec-pill">Wi-Fi 802.11b/g/n</span>
+        <span class="spec-pill">11 GPIO</span>
+      </div>
+    </div>
+
+    <div class="comp-card">
+      <div class="comp-num">02</div>
+      <div class="comp-icon">
+        <svg viewBox="0 0 48 48" fill="none">
+          <rect x="10" y="16" width="28" height="16" rx="2" stroke="#00d4ff" stroke-width="1.5"/>
+          <circle cx="18" cy="24" r="4" stroke="#00d4ff" stroke-width="1.5"/>
+          <circle cx="30" cy="24" r="4" stroke="#00d4ff" stroke-width="1.5"/>
+          <path d="M18 20 Q24 8 30 20" stroke="#ff8c42" stroke-width="1" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <div class="comp-name">HC-SR04</div>
+      <div class="comp-role">Ultrasonic Sensor</div>
+      <p class="comp-desc">Sits at the top of the tank and bounces ultrasonic pulses off the water surface. The time it takes for the echo to return tells you exactly how far down the water is — no contact with the water needed.</p>
+      <div class="comp-spec">
+        <span class="spec-pill">2–400 cm range</span>
+        <span class="spec-pill">±3mm accuracy</span>
+        <span class="spec-pill">5V VCC</span>
+        <span class="spec-pill">40 kHz</span>
+      </div>
+    </div>
+
+    <div class="comp-card">
+      <div class="comp-num">03</div>
+      <div class="comp-icon">
+        <svg viewBox="0 0 48 48" fill="none">
+          <rect x="12" y="10" width="24" height="28" rx="2" stroke="#00d4ff" stroke-width="1.5"/>
+          <rect x="18" y="6" width="12" height="6" rx="1" stroke="#00d4ff" stroke-width="1.5"/>
+          <circle cx="24" cy="26" r="6" stroke="#00e676" stroke-width="1.5"/>
+          <line x1="24" y1="20" x2="24" y2="22" stroke="#00e676" stroke-width="2"/>
+          <line x1="24" y1="30" x2="24" y2="32" stroke="#00e676" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="comp-name">5V Relay</div>
+      <div class="comp-role">Actuator Module</div>
+      <p class="comp-desc">Acts as the go-between for the microcontroller and the pump. The NodeMCU outputs a tiny signal, the relay translates that into switching actual mains power — keeping your 3.3V board safely away from the pump circuit.</p>
+      <div class="comp-spec">
+        <span class="spec-pill">5V trigger</span>
+        <span class="spec-pill">10A @ 250V</span>
+        <span class="spec-pill">Optocoupled</span>
+        <span class="spec-pill">NO/NC</span>
+      </div>
+    </div>
+
+    <div class="comp-card">
+      <div class="comp-num">04</div>
+      <div class="comp-icon">
+        <svg viewBox="0 0 48 48" fill="none">
+          <rect x="4" y="14" width="40" height="20" rx="3" stroke="#00d4ff" stroke-width="1.5"/>
+          <rect x="10" y="20" width="28" height="8" rx="1" fill="rgba(0,212,255,0.1)" stroke="#00d4ff" stroke-width="1"/>
+          <line x1="44" y1="24" x2="48" y2="24" stroke="#00d4ff" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="comp-name">Blynk IoT</div>
+      <div class="comp-role">Cloud Platform</div>
+      <p class="comp-desc">Handles the cloud side of things — receives readings from the NodeMCU, stores them, and pushes everything to the mobile app in real time. Setting up the dashboard took under an hour, which honestly surprised us.</p>
+      <div class="comp-spec">
+        <span class="spec-pill">MQTT / HTTP</span>
+        <span class="spec-pill">Mobile App</span>
+        <span class="spec-pill">Real-time</span>
+        <span class="spec-pill">Notifications</span>
+      </div>
+    </div>
+
+    <div class="comp-card">
+      <div class="comp-num">05</div>
+      <div class="comp-icon">
+        <svg viewBox="0 0 48 48" fill="none">
+          <path d="M24 8 Q36 16 36 28 Q36 38 24 42 Q12 38 12 28 Q12 16 24 8Z" stroke="#00a8cc" stroke-width="1.5" fill="rgba(0,168,204,0.1)"/>
+          <path d="M24 18 Q30 22 30 28 Q30 34 24 36 Q18 34 18 28 Q18 22 24 18Z" fill="rgba(0,212,255,0.2)" stroke="#00d4ff" stroke-width="1"/>
+        </svg>
+      </div>
+      <div class="comp-name">Water Pump</div>
+      <div class="comp-role">Output Actuator</div>
+      <p class="comp-desc">The one physical output of the whole system. When the tank runs low, the relay clicks and the pump starts filling. Once it hits the upper mark, it shuts right back off — no human needed anywhere in that loop.</p>
+      <div class="comp-spec">
+        <span class="spec-pill">12V DC</span>
+        <span class="spec-pill">Submersible</span>
+        <span class="spec-pill">Auto control</span>
+      </div>
+    </div>
+
+    <div class="comp-card">
+      <div class="comp-num">06</div>
+      <div class="comp-icon">
+        <svg viewBox="0 0 48 48" fill="none">
+          <rect x="6" y="10" width="36" height="28" rx="4" stroke="#00d4ff" stroke-width="1.5"/>
+          <rect x="12" y="18" width="10" height="12" rx="1" fill="rgba(0,212,255,0.15)" stroke="#00d4ff" stroke-width="1"/>
+          <rect x="26" y="18" width="10" height="5" rx="1" fill="rgba(0,230,118,0.15)" stroke="#00e676" stroke-width="1"/>
+          <rect x="26" y="25" width="10" height="5" rx="1" fill="rgba(255,140,66,0.15)" stroke="#ff8c42" stroke-width="1"/>
+          <circle cx="39" cy="14" r="4" fill="rgba(0,212,255,0.2)" stroke="#00d4ff" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="comp-name">Dashboard</div>
+      <div class="comp-role">User Interface</div>
+      <p class="comp-desc">Where you actually see what's happening. The gauge updates live, the history chart shows how the level has moved, and there's a manual override if you want to take control. Alerts come through even when the app is closed.</p>
+      <div class="comp-spec">
+        <span class="spec-pill">iOS / Android</span>
+        <span class="spec-pill">Web Dashboard</span>
+        <span class="spec-pill">Alerts</span>
+        <span class="spec-pill">Manual Override</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="architecture">
+  <div class="arch-inner">
+    <div class="section-label">System Design</div>
+    <div class="section-title">IoT ARCHITECTURE</div>
+    <div class="arch-layers">
+
+      <div class="arch-layer" data-delay="0">
+        <div class="layer-num">04</div>
+        <div class="layer-bar" style="background:linear-gradient(to bottom,#00d4ff,#0a7c8c)"></div>
+        <div class="layer-info">
+          <div class="layer-name">Application Layer</div>
+          <div class="layer-detail">What the user actually sees and touches — the app, the dashboard, the alerts</div>
+          <div class="layer-items">
+            <span class="layer-item" style="background:rgba(0,212,255,0.08);border:0.5px solid rgba(0,212,255,0.3);color:var(--cyan);font-family:'IBM Plex Mono',monospace;font-size:11px;">Blynk Mobile App</span>
+            <span class="layer-item" style="background:rgba(0,212,255,0.08);border:0.5px solid rgba(0,212,255,0.3);color:var(--cyan);font-family:'IBM Plex Mono',monospace;font-size:11px;">Web Dashboard</span>
+            <span class="layer-item" style="background:rgba(0,212,255,0.08);border:0.5px solid rgba(0,212,255,0.3);color:var(--cyan);font-family:'IBM Plex Mono',monospace;font-size:11px;">Push Alerts</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-connector"></div>
+
+      <div class="arch-layer" data-delay="150">
+        <div class="layer-num">03</div>
+        <div class="layer-bar" style="background:linear-gradient(to bottom,#0a7c8c,#ff8c42)"></div>
+        <div class="layer-info">
+          <div class="layer-name">Data Processing Layer</div>
+          <div class="layer-detail">Receives readings, checks thresholds, logs history — the part that runs even while you sleep</div>
+          <div class="layer-items">
+            <span class="layer-item" style="background:rgba(255,140,66,0.08);border:0.5px solid rgba(255,140,66,0.3);color:var(--amber);font-family:'IBM Plex Mono',monospace;font-size:11px;">Blynk Server</span>
+            <span class="layer-item" style="background:rgba(255,140,66,0.08);border:0.5px solid rgba(255,140,66,0.3);color:var(--amber);font-family:'IBM Plex Mono',monospace;font-size:11px;">Firebase RTDB</span>
+            <span class="layer-item" style="background:rgba(255,140,66,0.08);border:0.5px solid rgba(255,140,66,0.3);color:var(--amber);font-family:'IBM Plex Mono',monospace;font-size:11px;">ThingSpeak</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-connector"></div>
+
+      <div class="arch-layer" data-delay="300">
+        <div class="layer-num">02</div>
+        <div class="layer-bar" style="background:linear-gradient(to bottom,#ff8c42,#00e676)"></div>
+        <div class="layer-info">
+          <div class="layer-name">Network Layer</div>
+          <div class="layer-detail">The home Wi-Fi connection that bridges the physical device to everything online</div>
+          <div class="layer-items">
+            <span class="layer-item" style="background:rgba(0,230,118,0.08);border:0.5px solid rgba(0,230,118,0.3);color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:11px;">Wi-Fi 802.11n</span>
+            <span class="layer-item" style="background:rgba(0,230,118,0.08);border:0.5px solid rgba(0,230,118,0.3);color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:11px;">MQTT Protocol</span>
+            <span class="layer-item" style="background:rgba(0,230,118,0.08);border:0.5px solid rgba(0,230,118,0.3);color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:11px;">HTTP POST</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-connector"></div>
+
+      <div class="arch-layer" data-delay="450">
+        <div class="layer-num">01</div>
+        <div class="layer-bar" style="background:linear-gradient(to bottom,#00e676,#00d4ff)"></div>
+        <div class="layer-info">
+          <div class="layer-name">Device / Sensing Layer</div>
+          <div class="layer-detail">The actual hardware sitting at the tank — sensor, board, relay, and pump</div>
+          <div class="layer-items">
+            <span class="layer-item" style="background:rgba(0,230,118,0.08);border:0.5px solid rgba(0,230,118,0.3);color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:11px;">HC-SR04 Sensor</span>
+            <span class="layer-item" style="background:rgba(0,230,118,0.08);border:0.5px solid rgba(0,230,118,0.3);color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:11px;">NodeMCU ESP8266</span>
+            <span class="layer-item" style="background:rgba(0,230,118,0.08);border:0.5px solid rgba(0,230,118,0.3);color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:11px;">Relay + Pump</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="section-label">System Workflow</div>
+    <div class="section-title">HOW IT WORKS</div>
+    <div class="steps-grid">
+      <div class="step-card" data-delay="0">
+        <div class="step-num">01</div>
+        <div class="step-icon">◈</div>
+        <div class="step-title">Measure Distance</div>
+        <p class="step-desc">The HC-SR04 sends out a short ultrasonic burst and waits for it to bounce back. That echo time is all you need — divide by two for the one-way distance.</p>
+      </div>
+      <div class="step-card" data-delay="100">
+        <div class="step-num">02</div>
+        <div class="step-icon">◉</div>
+        <div class="step-title">Calculate Level</div>
+        <p class="step-desc">Subtract the measured gap from the total tank height and you have the water level. A simple rolling average takes care of any noisy or jittery readings.</p>
+      </div>
+      <div class="step-card" data-delay="200">
+        <div class="step-num">03</div>
+        <div class="step-icon">⬡</div>
+        <div class="step-title">Threshold Logic</div>
+        <p class="step-desc">Too low — pump on. Too high — pump off. A small buffer zone between the two limits stops the relay from flickering every few seconds.</p>
+      </div>
+      <div class="step-card" data-delay="300">
+        <div class="step-num">04</div>
+        <div class="step-icon">◆</div>
+        <div class="step-title">Publish via MQTT</div>
+        <p class="step-desc">Every reading gets packaged and sent up to Blynk over Wi-Fi. The whole round-trip typically clears in under 50ms — fast enough that the dashboard feels genuinely live.</p>
+      </div>
+      <div class="step-card" data-delay="400">
+        <div class="step-num">05</div>
+        <div class="step-icon">◎</div>
+        <div class="step-title">User Notified</div>
+        <p class="step-desc">The gauge on the app updates, a notification pings if something needs attention, and you can step in to take manual control whenever you like — from anywhere.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section id="stats">
+  <div class="stats-row">
+    <div class="stat-item">
+      <div class="stat-val" data-target="5"><span class="counter">5</span><span class="stat-unit">s</span></div>
+      <div class="stat-label">Update Interval</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" data-target="5"><span class="counter">±5</span><span class="stat-unit">%</span></div>
+      <div class="stat-label">Sensor Accuracy</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val"><span class="counter">42</span><span class="stat-unit">ms</span></div>
+      <div class="stat-label">MQTT Latency</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val"><span class="counter">5</span><span class="stat-unit">/5</span></div>
+      <div class="stat-label">Tests Passed</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    <div class="footer-name">AQUASYNC</div>
+    <div class="footer-info">
+      Group Project · B.Tech CSE · 1st Semester · VIT Vellore<br>
+      Guide: Mageshvaran R · School of EEE<br>
+      Submitted: November 17, 2025
+    </div>
+  </div>
+  <div class="footer-tech">
+    <span>NodeMCU ESP8266</span><br>
+    <span>HC-SR04</span> · <span>5V Relay</span> · <span>MQTT</span><br>
+    Blynk · Firebase · Arduino IDE<br>
+    <span style="color:var(--muted);font-size:10px;">IoT Based Water Level Monitoring & Control System</span>
+  </div>
+</footer>
+
+<script>
+// CURSOR
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; cursor.style.left=mx+'px'; cursor.style.top=my+'px'; });
+function animRing(){
+  rx+=(mx-rx)*0.12; ry+=(my-ry)*0.12;
+  ring.style.left=rx+'px'; ring.style.top=ry+'px';
+  requestAnimationFrame(animRing);
+}
+animRing();
+
+// HERO CANVAS
+const hc = document.getElementById('hero-canvas');
+const hctx = hc.getContext('2d');
+let particles=[], W, H;
+function resizeHero(){ W=hc.width=window.innerWidth; H=hc.height=window.innerHeight; }
+resizeHero();
+window.addEventListener('resize', resizeHero);
+class Particle {
+  constructor(){
+    this.x=Math.random()*W; this.y=Math.random()*H;
+    this.vx=(Math.random()-0.5)*0.4; this.vy=(Math.random()-0.5)*0.4;
+    this.r=Math.random()*1.5+0.5; this.a=Math.random()*0.5+0.1;
+  }
+  update(){ this.x+=this.vx; this.y+=this.vy;
+    if(this.x<0||this.x>W) this.vx*=-1;
+    if(this.y<0||this.y>H) this.vy*=-1;
+  }
+  draw(ctx){
+    ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(0,212,255,${this.a})`; ctx.fill();
+  }
+}
+for(let i=0;i<120;i++) particles.push(new Particle());
+function drawHero(){
+  hctx.clearRect(0,0,W,H);
+  hctx.fillStyle='rgba(5,9,15,0.92)'; hctx.fillRect(0,0,W,H);
+  for(let i=0;i<particles.length;i++){
+    particles[i].update(); particles[i].draw(hctx);
+    for(let j=i+1;j<particles.length;j++){
+      let dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+      let d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){ hctx.beginPath(); hctx.moveTo(particles[i].x,particles[i].y);
+        hctx.lineTo(particles[j].x,particles[j].y);
+        hctx.strokeStyle=`rgba(0,212,255,${0.08*(1-d/120)})`; hctx.lineWidth=0.5; hctx.stroke(); }
+    }
+  }
+  requestAnimationFrame(drawHero);
+}
+drawHero();
+
+// SIMULATION ENGINE
+const sim = (function(){
+  let level=60, low=20, high=80, pumpOn=false, manual=false, packets=0;
+  const levelHistory=Array(40).fill(60);
+  let autoDir=0, t=0;
+
+  function pct(){return Math.round(level);}
+  function updateUI(){
+    const tw=document.getElementById('tankWater');
+    tw.style.height=level+'%';
+    document.getElementById('pctDisplay').textContent=pct()+'%';
+    const badge=document.getElementById('statusBadge');
+    if(level<=low){badge.className='tank-status-badge badge-low';badge.textContent='LOW — PUMP ON';}
+    else if(level>=high){badge.className='tank-status-badge badge-high';badge.textContent='HIGH — PUMP OFF';}
+    else{badge.className='tank-status-badge badge-ok';badge.textContent='NORMAL';}
+    const tankH=320;
+    document.getElementById('highLine').style.bottom=high+'%';
+    document.getElementById('lowLine').style.bottom=low+'%';
+    const dist=((100-level)/100*45).toFixed(1);
+    const volt=((level/100)*3.3).toFixed(2);
+    document.getElementById('distVal').textContent=dist+' cm';
+    document.getElementById('voltVal').textContent=volt+' V';
+    document.getElementById('latVal').textContent=(38+Math.round(Math.random()*20))+' ms';
+    document.getElementById('pktVal').textContent=packets;
+    const pBtn=document.getElementById('pumpBtn');
+    const pText=document.getElementById('pumpStatusText');
+    if(pumpOn){
+      pBtn.className='pump-btn pump-on';
+      pBtn.textContent='◉ PUMP ON — CLICK TO OVERRIDE';
+      pText.textContent='ON'; pText.style.color='var(--green)';
+    } else {
+      pBtn.className='pump-btn pump-off';
+      pBtn.textContent='⬡ PUMP OFF — CLICK TO OVERRIDE';
+      pText.textContent='OFF'; pText.style.color='var(--red)';
+    }
+    const lowS=document.getElementById('lowSlider');
+    const highS=document.getElementById('highSlider');
+    lowS.style.setProperty('--val',(low/100*100)+'%');
+    highS.style.setProperty('--val',((high-55)/40*100)+'%');
+    drawMiniChart();
+  }
+
+  function autoLogic(){
+    if(!manual){
+      if(level<=low && !pumpOn){ pumpOn=true; addLog(`pump activated — level at ${pct()}%`,'warn'); }
+      if(level>=high && pumpOn){ pumpOn=false; addLog(`pump stopped — tank full at ${pct()}%`,'ok'); }
+    }
+    if(pumpOn) level=Math.min(100,level+0.18);
+    else level=Math.max(0,level-0.06);
+    level=Math.max(0,Math.min(100,level));
+    levelHistory.push(level); levelHistory.shift();
+    packets++;
+    t++;
+    if(t%30===0) addLog(`level=${pct()}% dist=${((100-level)/100*45).toFixed(1)}cm pump=${pumpOn?'ON':'OFF'}`,'ok');
+    updateUI();
+  }
+
+  let logEntries=[];
+  function addLog(msg,type){
+    const ts=new Date();
+    const hh=String(ts.getHours()).padStart(2,'0');
+    const mm=String(ts.getMinutes()).padStart(2,'0');
+    const ss=String(ts.getSeconds()).padStart(2,'0');
+    logEntries.unshift({ts:`${hh}:${mm}:${ss}`,msg,type});
+    if(logEntries.length>8) logEntries.pop();
+    const el=document.getElementById('logEntries');
+    el.innerHTML=logEntries.map(e=>`<div class="log-entry"><span class="log-ts">[${e.ts}]</span><span class="log-${e.type}">${e.msg}</span></div>`).join('');
+  }
+
+  function drawMiniChart(){
+    const c=document.getElementById('chartCanvas');
+    const ctx=c.getContext('2d');
+    c.width=c.offsetWidth; c.height=80;
+    const W=c.width, H=c.height, n=levelHistory.length;
+    ctx.clearRect(0,0,W,H);
+    ctx.beginPath();
+    for(let i=0;i<n;i++){
+      const x=i/n*W, y=H-(levelHistory[i]/100)*H;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle='rgba(0,212,255,0.8)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+    const grad=ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,'rgba(0,212,255,0.2)'); grad.addColorStop(1,'rgba(0,212,255,0)');
+    ctx.fillStyle=grad; ctx.fill();
+    // threshold lines
+    ctx.beginPath(); ctx.moveTo(0,H-(high/100)*H); ctx.lineTo(W,H-(high/100)*H);
+    ctx.strokeStyle='rgba(255,140,66,0.4)'; ctx.lineWidth=1; ctx.setLineDash([4,4]); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,H-(low/100)*H); ctx.lineTo(W,H-(low/100)*H);
+    ctx.strokeStyle='rgba(255,63,91,0.4)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  setInterval(autoLogic, 500);
+  addLog('system initialized','ok');
+  addLog('sensor calibrated','ok');
+  addLog('mqtt connected','ok');
+  updateUI();
+
+  return {
+    togglePump(){ manual=true; pumpOn=!pumpOn; addLog(`manual override — pump ${pumpOn?'ON':'OFF'}`,'warn'); setTimeout(()=>{ manual=false; },15000); updateUI(); },
+    setLow(v){ low=+v; document.getElementById('lowVal').textContent=v+'%'; updateUI(); },
+    setHigh(v){ high=+v; document.getElementById('highVal').textContent=v+'%'; updateUI(); },
+    addWater(){ level=Math.min(100,level+8); addLog(`fill triggered — level ${pct()}%`,'ok'); updateUI(); },
+    drainWater(){ level=Math.max(0,level-8); addLog(`drain triggered — level ${pct()}%`,'warn'); updateUI(); }
+  };
+})();
+
+// SCROLL ANIMATIONS
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const delay=+(e.target.dataset.delay||0);
+      setTimeout(()=>e.target.classList.add('visible'), delay);
+    }
+  });
+},{threshold:0.15});
+document.querySelectorAll('.arch-layer,.step-card').forEach(el=>observer.observe(el));
+</script>
+</body>
+</html>
